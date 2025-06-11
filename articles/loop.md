@@ -2,15 +2,15 @@
 
 ## The "Magic" Behind Modern Coding Assistants
 
-If you've used Claude Code, Cursor, Windsurf, Copilot, or any other modern AI coding assistant, you've probably noticed how they seem to "think" through problems systematically. They read your code, understand context, make targeted changes, and verify results—just like an experienced software engineer would. You might have wondered: _"What's the architecture that makes this multi-step reasoning possible?"_
+If you've used Claude Code, Cursor, Windsurf, Copilot, or any other modern coding agent, you've probably noticed how they seem to "think" through problems systematically. They read your code, understand context, make targeted changes, and verify results—just like an experienced software engineer would. You might have wondered: _"What's the architecture that makes this multi-step reasoning possible?"_
 
 Many software engineers think there's some incredibly complex magic happening inside these tools. Some revolutionary AI architecture that only a few companies have figured out. The reality? **They all operate on a surprisingly simple and elegant concept called agent loops.**
 
 ## About This Series
 
-In this series, we'll dissect how coding agents actually work. We'll examine various implementations including **Claude Code**, RooCode, Aider, and other coding assistants, using real examples and open-source implementations where possible.
+In this series, I'll dissect how coding agents actually work. I'll examine various implementations including **Claude Code**, RooCode, Aider, and other coding assistants, with a focus on open-source implementations where I can analyze the actual code.
 
-By understanding these patterns, we can:
+By understanding these patterns, you can:
 
 - See how modern coding assistants really work
 - Understand design decisions and trade-offs
@@ -56,7 +56,7 @@ Instead of giving you a one-time response, it actually works through the problem
 
 ### The Loop - The Orchestrator
 
-The loop ties everything together. You can think about it as a simple while loop that continues until the task is complete, managing the flow between thinking (LLM) and doing (Tools).
+The loop ties everything together. It's a simple while loop that continues until the task is complete, managing the flow between thinking (LLM) and doing (Tools).
 
 Here's a visual representation of how the agent loop works:
 
@@ -82,26 +82,38 @@ graph TD
 And here's the same flow in code:
 
 ```typescript
-while (!taskComplete) {
-  // 1. Ask LLM what to do next
+while (true) {
+  // 1. THINK: Ask LLM what to do next
   const action = await llm.decideNextAction(context);
   
-  // 2. Execute the tool if needed
-  if (action.requiresTool) {
-    const result = await executeTool(action);
+  // 2. DECIDE: Does the LLM need to use a tool?
+  if (action.needsTool) {
+    // 3. ACT: Execute the tool
+    const result = await executeTool(action.tool);
+    
+    // 4. OBSERVE: Get the result
+    // 5. UPDATE: Add result to context
     context = updateContext(context, result);
+    
+    // 6. CHECK: Is the task complete?
+    if (isTaskComplete(context)) {
+      break; // Exit with final response
+    }
+    // Otherwise, loop back to THINK
+  } else {
+    // No tool needed - task is complete
+    break; // Exit with final response
   }
-  
-  // 3. Check if task is complete
-  taskComplete = action.isComplete;
 }
 ```
+
+*Note: This pseudocode is a conceptual simplification. In practice, implementations vary—for example, the Anthropic SDK uses `stop_reason === 'tool_use'` to determine when tools are needed.*
 
 That's it. The LLM decides, tools execute, the loop continues. This simple pattern creates systems that can solve complex, multi-step problems.
 
 ## Agent Loop Components
 
-Let's break down the key components that make agent loops possible. Understanding these components reveals why modern coding assistants are so powerful.
+Let's break down the two key components that make agent loops possible. Understanding these components reveals why modern coding assistants are so powerful.
 
 ### 1. The LLM (Large Language Model)
 
@@ -215,7 +227,7 @@ While the model provides raw intelligence, **the agent architecture and implemen
 
 This is why Claude Code, Cursor, and Windsurf can feel very different despite using similar models. The combination of a powerful model with thoughtful architecture creates the best experience.
 
-In future articles in this series, we'll dive deeper into these architectural differences—exploring how different coding assistants implement context management, tool design, and execution strategies to create their unique experiences.
+In future articles in this series, I'll dive deeper into these architectural differences—exploring how different coding assistants implement context management, tool design, and execution strategies to create their unique experiences.
 
 ## Why Agent Loops Matter for Software Engineers
 
@@ -240,6 +252,8 @@ When initial approaches fail, agents learn from the results and try different st
 Tasks like large-scale refactoring, dependency updates, or documentation generation become manageable.
 
 ## Complete Example: Building an Agent Loop
+
+Now let's see how these concepts come together in a working implementation.
 
 Let's build a simple agent using Anthropic's SDK with proper tool use. This example shows exactly how agent loops work:
 
@@ -436,7 +450,7 @@ That's it. This is the pattern behind every AI coding assistant. Claude decides 
 
 ## Conclusion
 
-Agent loops are the foundational pattern behind every modern AI coding assistant. By combining LLM intelligence with basic tools and an iterative loop, you get systems that can solve complex programming tasks.
+Agent loops are the foundational pattern behind every modern coding agent. By combining LLM intelligence with basic tools and an iterative loop, you get systems that can solve complex programming tasks.
 
 Understanding this pattern helps you:
 
@@ -445,4 +459,4 @@ Understanding this pattern helps you:
 - Build your own specialized agents
 - See through the marketing hype to understand real capabilities
 
-In the next articles in this series, we'll dive deep into open source coding agents—examining implementations like Aider, Continue, and others where we can actually read the code. We'll explore how these agents organize their loops, design their tools, and implement the architectural choices that define their behavior. By focusing on open source solutions, we'll be able to look at real code, analyze design decisions, and truly understand the trade-offs each system makes.
+In the next articles in this series, I'll dive deep into open source coding agents—examining implementations like Aider, Continue, and others where I can actually read the code. I'll explore how these agents organize their loops, design their tools, and implement the architectural choices that define their behavior. By focusing on open source solutions, I'll be able to look at real code, analyze design decisions, and truly understand the trade-offs each system makes.
