@@ -530,7 +530,7 @@ Claude Code's architecture represents a thoughtful balance of power and safety, 
 
 Understanding this architecture transforms Claude Code from a black box into a transparent system you can reason about. You know why it requires absolute paths (safety), why it batches operations (performance), why it delegates complex searches (efficiency), and why it maintains strict tool boundaries (predictability).
 
-The WebSocket streaming, session persistence, parallel execution, and extensible tool registry all work together to create a system that feels responsive and capable while maintaining the safety necessary for production code manipulation.
+The streaming responses, session persistence, parallel execution, and extensible tool registry all work together to create a system that feels responsive and capable while maintaining the safety necessary for production code manipulation.
 
 Whether you're using Claude Code for quick fixes or complex refactoring, understanding its architecture helps you work with the system rather than against it. The next time you see Claude Code spawn a sub-agent for a search or insist on reading before writing, you'll know these aren't quirks—they're features designed to make your coding experience both powerful and safe.
 
