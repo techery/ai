@@ -1,6 +1,6 @@
 # Inside Claude Code: The Tools and Architecture That Power Your AI Coding Assistant
 
-I've been using Claude Code since its first release, watching it evolve from an experimental tool into something that's progressively transforming how we write software at Techery. We're in the process of making it our main coding agent, with more developers adopting it every week. After months of intensive use, I want to share what I've learned about how Claude Code actually works under the hood.
+I've been using Claude Code since its first release, watching it evolve from an experimental tool into something that's progressively transforming how we write software at Techery. We're in the process of making it our main AI coding assistant, with more developers adopting it every week. After months of intensive use, I want to share what I've learned about how Claude Code actually works under the hood.
 
 ## Table of Contents
 
@@ -37,7 +37,7 @@ One thing that surprised me when I first explored Claude Code's internals is how
 - **Anthropic SDK** - Uses the official TypeScript SDK to communicate with Claude's API
 - **Node.js** - Runs on Node.js, making it cross-platform and easy to install via npm
 
-What's remarkable is how straightforward it would be to implement a similar tool yourself. At its core, you need: a CLI that sends messages to Claude's API, a set of tool definitions that map to file system operations, and a loop that processes Claude's responses and executes the requested tools. Any developer comfortable with Node.js could build a basic version in a weekend - the real value comes from the thoughtful design decisions, safety mechanisms, and the polished user experience that Anthropic has refined through months of internal use.
+What's remarkable is how straightforward it would be to implement a similar tool yourself. At its core, you need: a CLI that sends messages to Claude's API, a set of tool definitions that map to file system operations, and a loop that processes Claude's responses and executes the requested tools. **Any developer comfortable with Node.js could build a basic version in a weekend.** The magic isn't in complex architecture—it's in the thoughtful design decisions, safety mechanisms, and the polished user experience that Anthropic has refined through months of internal use. This demystifies the "AI magic"—it's really just a well-designed Node.js application talking to an API.
 
 ## From Simple Tools to Sophisticated Workflows
 

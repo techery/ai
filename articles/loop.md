@@ -1,21 +1,34 @@
 # Understanding Agent Loops: How AI Assistants Use Tools to Solve Complex Problems
 
+## Table of Contents
+
+- [The "Magic" Behind Modern Coding Assistants](#the-magic-behind-modern-coding-assistants)
+- [About This Series](#about-this-series)
+- [The Simple Idea That Powers Everything](#the-simple-idea-that-powers-everything)
+- [The Problem with One-Shot AI Responses](#the-problem-with-one-shot-ai-responses)
+- [What Is an Agent Loop?](#what-is-an-agent-loop)
+- [Agent Loop Components](#agent-loop-components)
+- [Where the Power Really Comes From](#where-the-power-really-comes-from)
+- [Why Agent Loops Matter for Software Engineers](#why-agent-loops-matter-for-software-engineers)
+- [Let's Build It: A Working Agent Loop](#lets-build-it-a-working-agent-loop)
+- [Conclusion](#conclusion)
+
 ## The "Magic" Behind Modern Coding Assistants
 
-If you've used Claude Code, Cursor, Windsurf, Copilot, or any other modern coding agent, you've probably noticed how they seem to "think" through problems systematically. They read your code, understand context, make targeted changes, and verify results—just like an experienced software engineer would. You might have wondered: _"What's the architecture that makes this multi-step reasoning possible?"_
+If you've used Claude Code, Cursor, Windsurf, Copilot, or any other modern AI coding assistant, you've probably noticed how they seem to "think" through problems systematically. They read your code, understand context, make targeted changes, and verify results—just like an experienced software engineer would. You might have wondered: _"What's the architecture that makes this multi-step reasoning possible?"_
 
 Many software engineers think there's some incredibly complex magic happening inside these tools. Some revolutionary AI architecture that only a few companies have figured out. The reality? **They all operate on a surprisingly simple and elegant concept called agent loops.**
 
 ## About This Series
 
-In this series, I'll dissect how coding agents actually work. I'll examine various implementations including **Claude Code**, RooCode, Aider, and other coding assistants, with a focus on open-source implementations where I can analyze the actual code.
+In this series, I'll dissect how AI coding assistants actually work. I'll examine various implementations including **Claude Code**, RooCode, Aider, and other coding assistants, with a focus on open-source implementations where I can analyze the actual code.
 
 By understanding these patterns, you can:
 
 - See how modern coding assistants really work
 - Understand design decisions and trade-offs
-- Learn how to build our own agents
-- Use these tools more effectively in our daily work
+- Learn how to build your own agents
+- Use these tools more effectively in your daily work
 
 In this post, I'm going to give you a quick intro to how modern coding assistants work. No marketing fluff, no hand-waving about "advanced AI"—just the core patterns that power every major AI coding tool today.
 
@@ -205,9 +218,9 @@ There are multiple ways to make LLMs use tools, each with different trade-offs a
 - **Aider**: Git-focused tools with specialized diff and merge capabilities
 - **Open Source Agents**: Often use LangChain, CrewAI, or custom tool frameworks
 
-Each coding agent has evolved its own set of tools and execution methods, but they all follow the same fundamental agent loop pattern. The key is understanding that the loop itself is universal—it's the tool implementations and invocation methods that differ.
+Each AI coding assistant has evolved its own set of tools and execution methods, but they all follow the same fundamental agent loop pattern. The key is understanding that the loop itself is universal—it's the tool implementations and invocation methods that differ.
 
-## The Real Source of Power
+## Where the Power Really Comes From
 
 Understanding where the power in agent systems comes from requires a balanced perspective:
 
@@ -251,7 +264,7 @@ When initial approaches fail, agents learn from the results and try different st
 
 Tasks like large-scale refactoring, dependency updates, or documentation generation become manageable.
 
-## Complete Example: Building an Agent Loop
+## Let's Build It: A Working Agent Loop
 
 Now let's see how these concepts come together in a working implementation.
 
@@ -450,7 +463,7 @@ That's it. This is the pattern behind every AI coding assistant. Claude decides 
 
 ## Conclusion
 
-Agent loops are the foundational pattern behind every modern coding agent. By combining LLM intelligence with basic tools and an iterative loop, you get systems that can solve complex programming tasks.
+Agent loops are the foundational pattern behind every modern AI coding assistant. By combining LLM intelligence with basic tools and an iterative loop, you get systems that can solve complex programming tasks.
 
 Understanding this pattern helps you:
 
@@ -459,4 +472,4 @@ Understanding this pattern helps you:
 - Build your own specialized agents
 - See through the marketing hype to understand real capabilities
 
-In the next articles in this series, I'll dive deep into open source coding agents—examining implementations like Aider, Continue, and others where I can actually read the code. I'll explore how these agents organize their loops, design their tools, and implement the architectural choices that define their behavior. By focusing on open source solutions, I'll be able to look at real code, analyze design decisions, and truly understand the trade-offs each system makes.
+In the next articles in this series, I'll dive deep into open source AI coding assistants—examining implementations like Aider, Continue, and others where I can actually read the code. I'll explore how these agents organize their loops, design their tools, and implement the architectural choices that define their behavior. By focusing on open source solutions, I'll be able to look at real code, analyze design decisions, and truly understand the trade-offs each system makes.
