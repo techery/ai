@@ -444,3 +444,5 @@ Understanding this pattern helps you:
 - Debug when things go wrong
 - Build your own specialized agents
 - See through the marketing hype to understand real capabilities
+
+In the next articles in this series, we'll dive deep into open source coding agents—examining implementations like Aider, Continue, and others where we can actually read the code. We'll explore how these agents organize their loops, design their tools, and implement the architectural choices that define their behavior. By focusing on open source solutions, we'll be able to look at real code, analyze design decisions, and truly understand the trade-offs each system makes.
