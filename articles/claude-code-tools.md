@@ -21,600 +21,306 @@ One thing that surprised me when I first explored Claude Code's internals is how
 - **Anthropic SDK** - Uses the official TypeScript SDK to communicate with Claude's API
 - **Node.js** - Runs on Node.js, making it cross-platform and easy to install via npm
 
-This tech stack choice is brilliant in its simplicity. By using React with Ink, the team could leverage familiar web development patterns for building a terminal interface. The TypeScript foundation ensures reliability and maintainability. And the standard Node.js runtime means it works everywhere developers need it.
-
-The result is a tool that feels sophisticated but is built on a foundation any JavaScript developer would find familiar. While Claude Code isn't open source yet, understanding its tech stack helps demystify how it works.
+What's remarkable is how straightforward it would be to implement a similar tool yourself. At its core, you need: a CLI that sends messages to Claude's API, a set of tool definitions that map to file system operations, and a loop that processes Claude's responses and executes the requested tools. Any developer comfortable with Node.js could build a basic version in a weekend - the real value comes from the thoughtful design decisions, safety mechanisms, and the polished user experience that Anthropic has refined through months of internal use.
 
 ## What Actually Happens When You Type in Claude Code?
 
-When you fire up Claude Code and ask it to refactor a function or debug an issue, you're not just chatting with an AI—you're activating a sophisticated toolkit designed specifically for software engineering. While our [previous article](./loop.md) explained the agent loop pattern that powers all AI coding assistants, today we're diving deep into **Claude Code itself**: what tools it uses, how they work together, and why certain design decisions were made.
+When you fire up Claude Code and ask it to refactor a function or debug an issue, you're not just chatting with an AI—you're activating a sophisticated toolkit designed specifically for software engineering. While our [previous article](./loop.md) explained the agent loop pattern that powers all AI coding assistants, today we're diving deep into Claude Code's specific implementation.
 
-If you've ever wondered why Claude Code feels different from other AI assistants, or why it behaves in specific ways, this article will reveal the engineering decisions behind those behaviors.
+If you've ever wondered why Claude Code feels different from other AI assistants, or why it behaves in specific ways, the answer lies in its toolkit. Let's explore the 15 tools that power every interaction.
 
 ## The 15 Tools That Power Claude Code
 
-Claude Code operates with just 15 core tools, organized into logical groups:
+What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully designed set of 15 tools that map directly to what developers actually do. These tools are organized into logical groups that mirror typical development workflows:
 
-**File Operations** (Read, Write, Edit, MultiEdit) - The basics of any coding task. Read files to understand code, Write to create new ones, Edit for precise changes, and MultiEdit for batch refactoring.
+**File Operations** (Read, Write, Edit, MultiEdit) - The foundation of any coding task. These tools handle everything from reading existing code to making surgical edits or batch refactoring.
 
-**Search & Navigation** (Glob, Grep, LS) - Find files by pattern, search content with regex, and explore directory structures. These tools are optimized for developer workflows, like sorting results by modification time.
+**Search & Navigation** (Glob, Grep, LS) - Your exploration toolkit. Find files by pattern, search content with regex, and navigate directory structures—all optimized for speed even in massive codebases.
 
-**Execution & Automation** (Bash, Task) - Run shell commands and delegate complex operations. The Task tool is particularly powerful—it spawns sub-agents to handle extensive searches without cluttering your main conversation.
+**Execution & Automation** (Bash, Task) - The power tools. Run any shell command or spawn autonomous sub-agents for complex operations. The Task tool is particularly clever—it delegates open-ended searches to keep your main conversation clean.
 
-**Web Integration** (WebFetch, WebSearch) - Access documentation and current information. WebFetch is clever—it processes web content with AI to extract what you need.
+**Web Integration** (WebFetch, WebSearch) - Your window to the internet. Access documentation, search for current information, and process web content with AI to extract exactly what you need.
 
-**Task Management** (TodoWrite, TodoRead) - Built-in planning that transforms Claude Code from reactive to proactive. It creates task lists for complex operations and tracks progress systematically.
+**Task Management** (TodoWrite, TodoRead) - The planning layer that makes Claude Code proactive rather than reactive. It automatically creates task lists for complex operations and tracks progress systematically.
 
-**Jupyter Support** (NotebookRead, NotebookEdit) - Specialized tools for data science workflows that understand notebook structure.
+**Jupyter Support** (NotebookRead, NotebookEdit) - Specialized tools for data science that understand notebook cell structure and outputs.
 
-**MCP Extensions** - The extensibility layer. Any MCP server tool becomes a first-class citizen, like `mcp__github__createPR`, working seamlessly within the agent loop.
+**MCP Extensions** - The extensibility layer where any third-party tool becomes a first-class citizen, seamlessly integrated into the agent loop.
+
+Now let's dive into each tool to understand exactly what it does and how to use it effectively.
 
 ## The Complete Tool Reference: 15 Tools Explained
 
-Claude Code's power comes from its carefully designed toolkit. Each tool serves a specific purpose in the software development workflow. Let's explore each one in detail.
+Claude Code's power comes from its carefully designed toolkit. Each tool serves a specific purpose in the software development workflow.
 
 ---
 
 ## 📁 File Operations
 
-These four tools form the core of Claude Code's file manipulation capabilities. They're designed to be safe, predictable, and traceable.
+### 1. Read
 
-### 1. Read - File Content Viewer
+**Purpose:** Read file contents with line numbers
 
-```typescript
-interface Read {
-  file_path: string; // Absolute path to file (required)
-  offset?: number; // Line number to start reading from
-  limit?: number; // Number of lines to read (default: 2000)
-}
-```
+**Parameters:**
 
-**What it does:** Reads file contents and returns them with line numbers in `cat -n` format.
+- `file_path` (required) - Absolute path to file
+- `offset` - Line number to start reading from
+- `limit` - Number of lines to read (default: 2000)
 
-**How it works:**
+**Key features:**
 
-- Opens the specified file and reads its contents
-- Applies line numbering starting from 1
-- Supports pagination for large files via offset/limit
-- Handles various encodings (UTF-8 by default)
-- Returns an error for binary files or if file doesn't exist
-
-**Key behaviors:**
-
-- Maximum 2000 lines by default to prevent token overflow
-- Lines longer than 2000 characters are truncated
-- Can read images and display them visually (PNG, JPG, etc.)
+- Returns content in `cat -n` format
+- Can display images visually
+- Lines >2000 chars are truncated
 - Required before editing existing files
 
-**Example usage:**
+### 2. Write
 
-```typescript
-// Read entire file (up to 2000 lines)
-Read("/Users/dev/project/src/index.js")
+**Purpose:** Create new files or overwrite existing ones
 
-// Read lines 100-150 of a large file
-Read("/Users/dev/project/large-log.txt", offset: 100, limit: 50)
-```
+**Parameters:**
 
-### 2. Write - File Creator/Overwriter
+- `file_path` (required) - Absolute path to file
+- `content` (required) - Complete file content
 
-```typescript
-interface Write {
-  file_path: string; // Absolute path to file (required)
-  content: string; // Complete file content (required)
-}
-```
+**Key features:**
 
-**What it does:** Creates new files or completely overwrites existing files.
+- Complete file replacement
+- Creates directories if needed
+- Must read existing files first (safety)
 
-**How it works:**
+### 3. Edit
 
-- Creates directories if they don't exist
-- Writes content atomically to prevent corruption
-- For existing files, requires prior Read to ensure awareness
+**Purpose:** Exact string replacement in files
 
-**Key behaviors:**
+**Parameters:**
 
-- Complete replacement - no merging or appending
-- Must read existing files first (safety mechanism)
-- Can create files in non-existent directories
-- No size limits but subject to system constraints
+- `file_path` (required) - Absolute path to file
+- `old_string` (required) - Exact string to replace
+- `new_string` (required) - Replacement string
+- `replace_all` - Replace all occurrences (default: false)
 
-**Example usage:**
+**Key features:**
 
-```typescript
-// Create new file
-Write('/Users/dev/project/new-component.js', 'export const Component = () => {...}');
+- Requires exact match including whitespace
+- No regex support
+- Fails if old_string not unique (unless replace_all=true)
+- File must be read first
 
-// Overwrite existing (after reading)
-Write('/Users/dev/project/config.json', updatedConfigContent);
-```
+### 4. MultiEdit
 
-### 3. Edit - Precision String Replacer
+**Purpose:** Multiple edits in one atomic operation
 
-```typescript
-interface Edit {
-  file_path: string; // Absolute path to file (required)
-  old_string: string; // Exact string to replace (required)
-  new_string: string; // Replacement string (required)
-  replace_all?: boolean; // Replace all occurrences (default: false)
-}
-```
+**Parameters:**
 
-**What it does:** Performs exact string replacements within files.
+- `file_path` (required) - Absolute path to file
+- `edits` (required) - Array of edit operations:
+  - `old_string` - Text to replace
+  - `new_string` - Replacement text
+  - `replace_all` - Replace all occurrences
 
-**How it works:**
+**Key features:**
 
-- Searches for exact match of old_string
-- Replaces with new_string
-- Preserves all formatting and whitespace
-- Maintains file encoding
-
-**Key behaviors:**
-
-- Fails if old_string is not unique (unless replace_all=true)
-- Must match exactly including whitespace
-- Cannot use regex patterns
-- Requires prior file read
-
-**Example usage:**
-
-```typescript
-// Single replacement
-Edit("/Users/dev/file.js", "const OLD_NAME = 5", "const NEW_NAME = 5")
-
-// Replace all occurrences
-Edit("/Users/dev/file.js", "console.log", "logger.debug", replace_all: true)
-```
-
-### 4. MultiEdit - Batch Editor
-
-```typescript
-interface MultiEdit {
-  file_path: string; // Absolute path to file (required)
-  edits: Array<{
-    // Sequential edits to apply (required)
-    old_string: string;
-    new_string: string;
-    replace_all?: boolean;
-  }>;
-}
-```
-
-**What it does:** Applies multiple edits to a single file in one atomic operation.
-
-**How it works:**
-
-- Applies edits sequentially in order provided
-- Each edit operates on the result of previous edits
-- All succeed or all fail (atomic operation)
-
-**Key behaviors:**
-
+- Sequential execution (order matters)
+- All succeed or all fail
 - More efficient than multiple Edit calls
-- Order matters - plan carefully
-- Same restrictions as Edit for each operation
-- Great for refactoring
-
-**Example usage:**
-
-```typescript
-MultiEdit('/Users/dev/api.js', [
-  { old_string: 'getUserById', new_string: 'findUserById', replace_all: true },
-  { old_string: '// TODO: Add error handling', new_string: '// Error handling added' },
-  { old_string: "status: 'active'", new_string: "status: 'ACTIVE'" },
-]);
-```
 
 ---
 
 ## 🔍 Search and Navigation
 
-These tools help you explore and search through codebases efficiently, from finding files to searching content.
+### 5. Glob
 
-### 5. Glob - Pattern-Based File Finder
+**Purpose:** Find files by name pattern
 
-```typescript
-interface Glob {
-  pattern: string; // Glob pattern to match (required)
-  path?: string; // Directory to search in (default: cwd)
-}
-```
+**Parameters:**
 
-**What it does:** Finds files matching glob patterns, sorted by modification time.
+- `pattern` (required) - Glob pattern to match
+- `path` - Directory to search in (default: cwd)
 
-**How it works:**
+**Key features:**
 
-- Uses standard glob syntax (\*, \*\*, ?, [])
-- Searches recursively when using \*\*
-- Returns paths relative to search directory
-- Sorts by modification time (newest first)
+- Standard glob syntax (\*, \*\*, ?, [])
+- Sorted by modification time (newest first)
+- Respects .gitignore
+- Fast on large codebases
 
-**Key behaviors:**
+### 6. Grep
 
-- Respects .gitignore patterns
-- Case-sensitive by default
-- Returns empty array if no matches
-- Very fast even on large codebases
+**Purpose:** Search file contents with regex
 
-**Example patterns:**
+**Parameters:**
 
-```typescript
-// Find all TypeScript files
-Glob("**/*.ts")
+- `pattern` (required) - Regex pattern to search
+- `path` - Directory to search in (default: cwd)
+- `include` - File pattern filter (e.g., "\*.js")
 
-// Find test files in specific directory
-Glob("**/*.test.js", path: "/Users/dev/project/src")
-
-// Find all JSON configs
-Glob("**/config*.json")
-```
-
-### 6. Grep - Content Search Engine
-
-```typescript
-interface Grep {
-  pattern: string; // Regex pattern to search (required)
-  path?: string; // Directory to search in (default: cwd)
-  include?: string; // File pattern filter (e.g., "*.js")
-}
-```
-
-**What it does:** Searches file contents using regular expressions.
-
-**How it works:**
+**Key features:**
 
 - Full regex support (PCRE syntax)
-- Searches file contents, not names
-- Returns list of files containing matches
-- Can filter by file type
-
-**Key behaviors:**
-
-- Returns file paths, not match contents
-- Case-sensitive by default
+- Returns file paths containing matches
 - Skips binary files
-- Use ripgrep (`rg`) in Bash for detailed matches
+- Use `rg` in Bash for detailed matches
 
-**Example usage:**
+### 7. LS
 
-```typescript
-// Find files containing function definitions
-Grep("function\\s+\\w+\\s*\\(")
+**Purpose:** List directory contents
 
-// Search only in JavaScript files
-Grep("TODO|FIXME", include: "*.js")
+**Parameters:**
 
-// Find class definitions
-Grep("class\\s+[A-Z]\\w*\\s*(extends|{)")
-```
+- `path` (required) - Absolute directory path
+- `ignore` - Array of glob patterns to ignore
 
-### 7. LS - Directory Lister
+**Key features:**
 
-```typescript
-interface LS {
-  path: string; // Absolute directory path (required)
-  ignore?: string[]; // Glob patterns to ignore
-}
-```
-
-**What it does:** Lists files and directories with optional filtering.
-
-**How it works:**
-
-- Returns immediate children only (not recursive)
+- Non-recursive (immediate children only)
+- Shows hidden files
 - Distinguishes files from directories
-- Applies ignore patterns if provided
-- Formats output hierarchically
-
-**Key behaviors:**
-
-- Requires absolute paths
-- Shows hidden files (starting with .)
 - Returns error if path doesn't exist
-- Useful for exploring project structure
-
-**Example usage:**
-
-```typescript
-// List project root
-LS("/Users/dev/project")
-
-// List source directory, ignoring tests
-LS("/Users/dev/project/src", ignore: ["*.test.js", "*.spec.js"])
-```
 
 ---
 
 ## ⚡ Execution and Automation
 
-These powerful tools enable Claude Code to run commands and delegate complex tasks to sub-agents.
+### 8. Bash
 
-### 8. Bash - Command Executor
+**Purpose:** Execute shell commands
 
-```typescript
-interface Bash {
-  command: string; // Shell command to execute (required)
-  timeout?: number; // Timeout in ms (max: 600000)
-  description?: string; // 5-10 word description
-}
-```
+**Parameters:**
 
-**What it does:** Executes shell commands in a persistent session.
+- `command` (required) - Shell command to execute
+- `timeout` - Timeout in ms (max: 600000)
+- `description` - 5-10 word description
 
-**How it works:**
+**Key features:**
 
-- Maintains shell state across invocations
-- Captures stdout and stderr
-- Enforces timeout limits
-- Preserves working directory
+- Persistent session state
+- 2-minute default timeout (10-minute max)
+- Output truncated at 30,000 chars
+- No interactive commands
 
-**Key behaviors:**
+### 9. Task
 
-- No interactive commands allowed
-- Output truncated at 30,000 characters
-- 2-minute default timeout, 10-minute max
-- Use specialized tools instead of file commands
+**Purpose:** Spawn sub-agent for complex operations
 
-**Example usage:**
+**Parameters:**
 
-```typescript
-// Run tests
-Bash("npm test", description: "Run project test suite")
+- `description` (required) - Short task description
+- `prompt` (required) - Detailed instructions
 
-// Check git status
-Bash("git status --porcelain", description: "Check git working tree")
+**Key features:**
 
-// Build project
-Bash("npm run build", timeout: 300000, description: "Build production bundle")
-```
-
-### 9. Task - Sub-Agent Spawner
-
-```typescript
-interface Task {
-  description: string; // Short task description (required)
-  prompt: string; // Detailed instructions (required)
-}
-```
-
-**What it does:** Launches an autonomous sub-agent for complex tasks.
-
-**How it works:**
-
-- Creates new agent with full tool access
-- Executes entire task independently
-- Returns consolidated results
-- No back-and-forth communication
-
-**Key behaviors:**
-
-- Stateless - one-shot execution
-- Perfect for open-ended searches
-- Reduces main session clutter
-- Same tool access as parent
-
-**Example usage:**
-
-```typescript
-Task(
-  description: "Find all API endpoints",
-  prompt: "Search the codebase for all REST API endpoint definitions. Include the HTTP method, path, and which file contains each endpoint."
-)
-```
+- Autonomous execution
+- Full tool access
+- One-shot operation (stateless)
+- Great for open-ended searches
 
 ---
 
 ## 🌐 Web Integration
 
-Claude Code can reach beyond your local filesystem to fetch and search web content.
+### 10. WebFetch
 
-### 10. WebFetch - Intelligent Web Scraper
+**Purpose:** Fetch and AI-process web content
 
-```typescript
-interface WebFetch {
-  url: string; // URL to fetch (required)
-  prompt: string; // Processing instruction (required)
-}
-```
+**Parameters:**
 
-**What it does:** Fetches web content and processes it with AI.
+- `url` (required) - URL to fetch
+- `prompt` (required) - Processing instruction
 
-**How it works:**
+**Key features:**
 
-- Downloads web page content
 - Converts HTML to markdown
-- Processes with smaller AI model
-- Returns extracted information
-
-**Key behaviors:**
-
-- 15-minute result cache
+- Processes with AI to extract info
+- 15-minute cache
 - Auto-upgrades HTTP to HTTPS
-- Handles cookies and redirects
-- Read-only operation
 
-**Example usage:**
+### 11. WebSearch
 
-```typescript
-WebFetch(
-  url: "https://docs.python.org/3/library/asyncio.html",
-  prompt: "Extract the main asyncio concepts and code examples"
-)
-```
+**Purpose:** Search the internet
 
-### 11. WebSearch - Internet Search Interface
+**Parameters:**
 
-```typescript
-interface WebSearch {
-  query: string; // Search query (required)
-  allowed_domains?: string[]; // Domain whitelist
-  blocked_domains?: string[]; // Domain blacklist
-}
-```
+- `query` (required) - Search query
+- `allowed_domains` - Domain whitelist
+- `blocked_domains` - Domain blacklist
 
-**What it does:** Searches the internet for current information.
+**Key features:**
 
-**How it works:**
-
-- Performs web search
-- Returns formatted results
-- Can filter by domain
+- Returns search snippets
+- Domain filtering options
+- Access to current information
 - US-only availability
-
-**Key behaviors:**
-
-- Returns search result snippets
-- Recent information beyond training cutoff
-- Domain filtering for focused searches
-- No direct page fetching
-
-**Example usage:**
-
-```typescript
-// General search
-WebSearch("React 19 new features")
-
-// Search specific sites
-WebSearch("typescript generics", allowed_domains: ["stackoverflow.com", "github.com"])
-```
 
 ---
 
 ## ✅ Task Management
 
-Built-in task tracking ensures complex operations are completed systematically.
+### 12. TodoWrite
 
-### 12. TodoWrite - Task List Manager
+**Purpose:** Create and update task lists
 
-```typescript
-interface TodoWrite {
-  todos: Array<{
-    // Todo list items (required)
-    id: string;
-    content: string;
-    status: 'pending' | 'in_progress' | 'completed';
-    priority: 'high' | 'medium' | 'low';
-  }>;
-}
-```
+**Parameters:**
 
-**What it does:** Creates and updates a structured task list.
+- `todos` (required) - Array of todo items:
+  - `id` - Unique identifier
+  - `content` - Task description
+  - `status` - pending/in_progress/completed
+  - `priority` - high/medium/low
 
-**How it works:**
+**Key features:**
 
-- Maintains session-specific todo list
-- Tracks status and priority
-- Enables systematic task completion
+- One task in_progress at a time
+- Used automatically for 3+ step tasks
 - Persists across conversation
 
-**Key behaviors:**
+### 13. TodoRead
 
-- Used for tasks with 3+ steps
-- Only one task in_progress at a time
-- IDs should be unique
-- Automatic for complex requests
+**Purpose:** View current task list
 
-**Example usage:**
+**Parameters:** None
 
-```typescript
-TodoWrite([
-  { id: '1', content: 'Set up test environment', status: 'completed', priority: 'high' },
-  { id: '2', content: 'Write unit tests', status: 'in_progress', priority: 'high' },
-  { id: '3', content: 'Add integration tests', status: 'pending', priority: 'medium' },
-]);
-```
+**Key features:**
 
-### 13. TodoRead - Task List Viewer
-
-```typescript
-interface TodoRead {
-  // No parameters - returns current todo list
-}
-```
-
-**What it does:** Retrieves the current task list.
-
-**How it works:**
-
-- Returns all todos with current state
-- No filtering or parameters
-- Shows complete task context
-
-**Key behaviors:**
-
-- Called frequently by Claude Code
+- Returns complete task state
+- Called frequently for context
 - Empty array if no todos
-- Helps maintain task awareness
 
 ---
 
 ## 📓 Jupyter Notebook Support
 
-Specialized tools for data science and notebook workflows.
+### 14. NotebookRead
 
-### 14. NotebookRead - Jupyter Notebook Viewer
+**Purpose:** Read Jupyter notebook contents
 
-```typescript
-interface NotebookRead {
-  notebook_path: string; // Absolute path to .ipynb (required)
-}
-```
+**Parameters:**
 
-**What it does:** Reads Jupyter notebook structure and contents.
+- `notebook_path` (required) - Absolute path to .ipynb
 
-**How it works:**
+**Key features:**
 
-- Parses .ipynb JSON format
 - Returns all cells with outputs
 - Preserves cell types and metadata
 - Maintains execution order
 
-**Key behaviors:**
+### 15. NotebookEdit
 
-- Shows code and markdown cells
-- Includes cell outputs
-- Preserves notebook structure
-- Large outputs may be truncated
+**Purpose:** Modify notebook cells
 
-### 15. NotebookEdit - Jupyter Notebook Editor
+**Parameters:**
 
-```typescript
-interface NotebookEdit {
-  notebook_path: string; // Absolute path to .ipynb (required)
-  cell_number: number; // 0-based cell index (required)
-  new_source: string; // New cell content (required)
-  cell_type?: 'code' | 'markdown'; // For insert mode
-  edit_mode?: 'replace' | 'insert' | 'delete';
-}
-```
+- `notebook_path` (required) - Absolute path to .ipynb
+- `cell_number` (required) - 0-based cell index
+- `new_source` (required) - New cell content
+- `cell_type` - 'code' or 'markdown' (for insert mode)
+- `edit_mode` - 'replace'/'insert'/'delete'
 
-**What it does:** Modifies Jupyter notebook cells.
+**Key features:**
 
-**How it works:**
-
-- Can replace, insert, or delete cells
+- Replace, insert, or delete cells
+- 0-based cell indexing
 - Preserves notebook integrity
-- Updates cell content or type
-- Maintains notebook metadata
-
-**Key behaviors:**
-
-- 0-based indexing for cells
-- Insert adds at specified index
-- Delete removes cell entirely
-- Type required for insert mode
-
-**Example usage:**
-
-```typescript
-// Replace cell content
-NotebookEdit("/path/notebook.ipynb", cell_number: 2, new_source: "import pandas as pd")
-
-// Insert new cell
-NotebookEdit("/path/notebook.ipynb", cell_number: 1, new_source: "# Data Analysis",
-            cell_type: "markdown", edit_mode: "insert")
-```
 
 ---
 
