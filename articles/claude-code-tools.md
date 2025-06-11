@@ -2,6 +2,21 @@
 
 I've been using Claude Code since its first release, watching it evolve from an experimental tool into something that's progressively transforming how we write software at Techery. We're in the process of making it our main coding agent, with more developers adopting it every week. After months of intensive use, I want to share what I've learned about how Claude Code actually works under the hood.
 
+## Table of Contents
+
+- [A Brief History](#a-brief-history)
+- [Under the Hood: The Tech Stack](#under-the-hood-the-tech-stack)
+- [What Actually Happens When You Type in Claude Code?](#what-actually-happens-when-you-type-in-claude-code)
+- [A Quick Example: Refactoring in Action](#a-quick-example-refactoring-in-action)
+- [The Tools That Power Claude Code](#the-tools-that-power-claude-code)
+- [Tools in Action: Real-World Workflows](#tools-in-action-real-world-workflows)
+- [Architectural Patterns](#architectural-patterns)
+  - [Task Planning with TodoWrite/TodoRead](#task-planning-with-todowritetodoread)
+  - [The Task Agent Architecture](#the-task-agent-architecture)
+- [Conclusion](#conclusion)
+- [The Complete Tool Reference](#the-complete-tool-reference)
+- [Official Resources](#official-resources)
+
 ## A Brief History
 
 Claude Code began as an internal tool at Anthropic, developed to help their own engineers work more efficiently. The tool proved so valuable that Anthropic's developers continue to use it daily for their own development work. After seeing its transformative impact internally, Anthropic decided to share it with the broader developer community.
@@ -23,15 +38,37 @@ One thing that surprised me when I first explored Claude Code's internals is how
 
 What's remarkable is how straightforward it would be to implement a similar tool yourself. At its core, you need: a CLI that sends messages to Claude's API, a set of tool definitions that map to file system operations, and a loop that processes Claude's responses and executes the requested tools. Any developer comfortable with Node.js could build a basic version in a weekend - the real value comes from the thoughtful design decisions, safety mechanisms, and the polished user experience that Anthropic has refined through months of internal use.
 
+## From Simple Tools to Sophisticated Workflows
+
+Now that we've seen the surprisingly simple tech stack, you might wonder: how does this straightforward Node.js application become such a powerful coding assistant? The answer lies in how Claude Code orchestrates its tools to mirror real developer workflows. Let's look at what happens when you start a coding session.
+
 ## What Actually Happens When You Type in Claude Code?
 
 When you fire up Claude Code and ask it to refactor a function or debug an issue, you're not just chatting with an AI—you're activating a sophisticated toolkit designed specifically for software engineering. While our [previous article](./loop.md) explained the agent loop pattern that powers all AI coding assistants, today we're diving deep into Claude Code's specific implementation.
 
 If you've ever wondered why Claude Code feels different from other AI assistants, or why it behaves in specific ways, the answer lies in its toolkit. Let's explore the 15 tools that power every interaction.
 
+## A Quick Example: Refactoring in Action
+
+Before diving into the tools, let's see Claude Code in action. Here's what happens when you ask it to refactor a function:
+
+```
+You: "Refactor the getUserData function to use async/await instead of callbacks"
+
+Claude Code:
+1. [Grep] Searches for 'getUserData' across your codebase
+2. [Read] Reads the file containing the function
+3. [TodoWrite] Creates a plan for the refactoring
+4. [Edit] Makes the necessary changes
+5. [Bash] Runs your tests to ensure nothing broke
+6. [TodoWrite] Marks the task as complete
+```
+
+This seamless workflow is powered by 15 specialized tools working in concert. Let's understand how they're organized.
+
 ## The Tools That Power Claude Code
 
-What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully designed set of tools that map directly to what developers actually do. These tools can be organized into logical groups that mirror typical development workflows:
+What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully designed set of tools that map directly to what developers actually do. These tools can be organized into logical groups that mirror typical development workflows (see the [complete tool reference](#the-complete-tool-reference) for detailed specifications):
 
 **File Operations** (Read, Write, Edit, MultiEdit) - The foundation of any coding task. These tools handle everything from reading existing code to making surgical edits or batch refactoring.
 
@@ -47,6 +84,86 @@ What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully d
 
 **MCP Extensions** - The extensibility layer where any third-party tool becomes a first-class citizen, seamlessly integrated into the agent loop.
 
+## Tools in Action: Real-World Workflows
+
+Now that we understand the tool categories, let's see how they work together in practice. These workflows demonstrate the power of Claude Code's orchestration.
+
+### Workflow 1: Finding and Fixing a Bug
+
+When you report a bug, here's how Claude Code combines tools to investigate and fix it:
+
+```typescript
+// You: "The API is returning 500 errors for user endpoints"
+
+// Claude Code's workflow:
+1. Grep("error.*500|500.*error", include: "*.log")     // Find error logs
+2. Read("/var/logs/api.log", offset: 1000)             // Read recent logs
+3. Grep("user.*endpoint|/api/user", include: "*.js")   // Find user endpoints
+4. Read("src/api/userController.js")                   // Examine the code
+5. TodoWrite([{ content: "Fix null check in getUserById" }])
+6. Edit("src/api/userController.js", ...)              // Fix the bug
+7. Bash("npm test -- userController.test.js")          // Verify the fix
+```
+
+### Workflow 2: Large-Scale Refactoring
+
+Here's how Claude Code handles a complex refactoring across multiple files:
+
+```typescript
+// You: "Convert all Promise-based code to async/await"
+
+// Claude Code's approach:
+1. TodoWrite([                                          // Plan the work
+    { content: "Find all Promise-based files", status: "pending" },
+    { content: "Analyze patterns used", status: "pending" },
+    { content: "Convert file by file", status: "pending" },
+    { content: "Run tests after each conversion", status: "pending" }
+])
+
+2. Task(                                                // Delegate search
+    description: "Find Promise patterns",
+    prompt: "Search for .then(), .catch(), new Promise..."
+)
+
+3. MultiEdit("src/services/api.js", [                  // Batch updates
+    { old_string: ".then(data =>", new_string: "const data = await" },
+    { old_string: ".catch(err =>", new_string: "} catch(err) {" }
+])
+
+4. Bash("npm test")                                    // Verify changes
+```
+
+### Workflow 3: Creating New Features
+
+When building something new, Claude Code follows structured patterns:
+
+```typescript
+// You: "Add a user authentication middleware"
+
+// Tool orchestration:
+1. Glob("**/middleware/*.js")                          // Find existing patterns
+2. Read("src/middleware/logger.js")                    // Study conventions
+3. TodoWrite([                                         // Plan implementation
+    { content: "Create auth middleware file" },
+    { content: "Add JWT verification logic" },
+    { content: "Write unit tests" },
+    { content: "Update route handlers" }
+])
+4. Write("src/middleware/auth.js", authCode)          // Create new file
+5. Grep("app\\.(get|post|put|delete)", "src/routes")  // Find routes to update
+6. MultiEdit(...)                                      // Add middleware to routes
+7. Write("tests/middleware/auth.test.js", testCode)   // Add tests
+8. Bash("npm test -- auth.test.js")                   // Run new tests
+```
+
+These workflows show how Claude Code's tools aren't just individual utilities—they're parts of an integrated system designed to handle real development tasks efficiently.
+
+## Beyond Individual Tools: Architectural Patterns
+
+While understanding individual tools is important, Claude Code's real power emerges from how these tools work together through sophisticated architectural patterns. These patterns transform a collection of utilities into an intelligent coding assistant that can handle complex, multi-step operations with minimal guidance.
+
+Let's explore the two key patterns that make Claude Code uniquely effective:
+
 ## Architectural Patterns
 
 ### Task Planning with TodoWrite/TodoRead
@@ -60,28 +177,48 @@ One of Claude Code's most distinctive architectural patterns is its built-in tas
 - Users always have visibility into what's happening
 - The assistant maintains context even in long conversations
 
-**The Planning Pattern:**
+**The Planning Pattern in Practice:**
+
+Let's look at a real example. When you ask Claude Code to migrate a codebase from CommonJS to ES modules:
 
 ```typescript
-// 1. User requests complex task
-'Refactor all API endpoints to use async/await';
+// You: "Convert our Node.js project from CommonJS to ES modules"
 
-// 2. Claude Code immediately creates a plan
+// Claude Code's response:
+"I'll help you convert your project to ES modules. Let me start by analyzing the current structure."
+
+// 1. Creates comprehensive plan
 TodoWrite([
-  { id: '1', content: 'Find all API endpoint files', status: 'pending', priority: 'high' },
-  { id: '2', content: 'Analyze current promise patterns', status: 'pending', priority: 'high' },
-  { id: '3', content: 'Convert to async/await syntax', status: 'pending', priority: 'high' },
-  { id: '4', content: 'Update error handling', status: 'pending', priority: 'medium' },
-  { id: '5', content: 'Run tests to verify', status: 'pending', priority: 'high' },
+  { id: '1', content: 'Analyze package.json and current module system', status: 'pending', priority: 'high' },
+  { id: '2', content: 'Find all require() statements', status: 'pending', priority: 'high' },
+  { id: '3', content: 'Find all module.exports patterns', status: 'pending', priority: 'high' },
+  { id: '4', content: 'Update package.json with "type": "module"', status: 'pending', priority: 'high' },
+  { id: '5', content: 'Convert require() to import statements', status: 'pending', priority: 'high' },
+  { id: '6', content: 'Convert module.exports to export statements', status: 'pending', priority: 'high' },
+  { id: '7', content: 'Update file extensions if needed', status: 'pending', priority: 'medium' },
+  { id: '8', content: 'Run tests to verify everything works', status: 'pending', priority: 'high' },
 ]);
 
-// 3. Systematic execution with status updates
+// 2. Systematic execution with real-time updates
 TodoWrite([...todos, { id: '1', status: 'in_progress' }]);
-// Execute: Grep("(app|router)\\.(get|post|put|delete)\\(")
-TodoWrite([...todos, { id: '1', status: 'completed' }]);
+Read("package.json");  // Examines current configuration
 
-// 4. Claude Code regularly checks progress
-TodoRead(); // Returns current state for context awareness
+// Output shows current state
+"Checking package.json... Currently using CommonJS (no 'type' field found)"
+
+TodoWrite([...todos, { id: '1', status: 'completed' }, { id: '2', status: 'in_progress' }]);
+Grep("require\\(", include: "*.js");  // Finds 47 files with require statements
+
+// 3. Handles discoveries dynamically
+"Found 47 files using require(). Also discovered some files using dynamic imports that need special handling."
+
+TodoWrite([...todos, 
+  { id: '9', content: 'Handle dynamic require() patterns separately', status: 'pending', priority: 'high' }
+]);
+
+// 4. Progress tracking keeps user informed
+TodoRead(); 
+// Shows: 1 completed, 1 in progress, 8 pending
 ```
 
 **Why This Matters:**
@@ -122,42 +259,85 @@ Main Claude Code Session
     └─> Continues with clean context
 ```
 
-**Complex Example - Analyzing Technical Debt:**
+**Real Example - Database Migration Analysis:**
+
+Here's an actual Task agent in action, analyzing a codebase for database migration requirements:
 
 ```typescript
+// You: "We need to migrate from MongoDB to PostgreSQL. Can you analyze what needs to be changed?"
+
+// Claude Code spawns a task agent:
 Task(
-  description: "Analyze technical debt in codebase",
-  prompt: `Analyze the entire codebase for technical debt indicators:
+  description: "Analyze MongoDB to PostgreSQL migration",
+  prompt: `Analyze the codebase to understand the scope of migrating from MongoDB to PostgreSQL:
 
-  1. Find all TODO, FIXME, HACK, and XXX comments
-  2. Identify files with cyclomatic complexity > 10
-  3. Look for deprecated API usage patterns
-  4. Find duplicated code blocks (>20 lines similar)
-  5. Check for outdated dependencies in package files
-  6. Identify large files (>500 lines) that might need splitting
-  7. Find deeply nested code (>4 levels of indentation)
+  1. Find all MongoDB-specific code:
+     - Mongoose models and schemas
+     - Direct MongoDB driver usage
+     - MongoDB-specific queries (aggregations, $lookup, etc.)
+     - Connection and configuration code
+  
+  2. Identify data access patterns:
+     - CRUD operations
+     - Complex queries and aggregations
+     - Transaction usage
+     - Index definitions
+  
+  3. Analyze current data models:
+     - Document structures that need normalization
+     - Embedded documents vs references
+     - Array fields and nested objects
+  
+  4. Find all affected files and estimate complexity:
+     - Simple changes (connection strings)
+     - Medium changes (query rewrites)
+     - Complex changes (data model restructuring)
 
-  For each issue found:
-  - Note the file path and line numbers
-  - Categorize by severity (high/medium/low)
-  - Estimate effort to fix (hours)
-
-  Return a structured report with:
-  - Executive summary of technical debt level
-  - Detailed findings by category
-  - Prioritized list of refactoring recommendations
-  - Total estimated hours to address all issues`
+  Return a migration plan with:
+  - Summary of MongoDB usage across the codebase
+  - List of files requiring changes (grouped by complexity)
+  - Data model transformation requirements
+  - Suggested PostgreSQL schema based on current MongoDB structure
+  - Estimated effort for each component`
 )
+
+// The sub-agent executes autonomously:
+"Starting MongoDB to PostgreSQL migration analysis..."
+
+// Sub-agent's internal workflow:
+1. Grep("mongoose|mongodb", include: "*.js")         // Found in 73 files
+2. Glob("**/models/*.js")                           // Located 15 model files
+3. Read("src/models/User.js")                       // Analyzing schema structure
+4. Grep("\\$lookup|\\$aggregate|\\$match")          // Finding complex queries
+5. Task("Analyze User model", "Extract schema...")  // Nested analysis
+6. Read("config/database.js")                       // Understanding connections
+
+// Sub-agent returns comprehensive report:
+"Migration Analysis Complete:
+
+ SUMMARY:
+ - 73 files use MongoDB (15 models, 28 controllers, 30 utilities)
+ - 234 queries need rewriting (167 simple, 52 medium, 15 complex)
+ - 5 models use heavy embedding requiring normalization
+ 
+ CRITICAL CHANGES:
+ 1. User model: Embedded 'preferences' needs separate table
+ 2. Order model: Array of 'items' needs order_items junction table
+ 3. Analytics: MongoDB aggregation pipeline needs SQL rewrite
+ 
+ SUGGESTED POSTGRESQL SCHEMA:
+ [Detailed schema definitions...]
+ 
+ EFFORT ESTIMATE: 120-150 hours
+ - Phase 1: Schema design and setup (16-20 hours)
+ - Phase 2: Model migration (40-50 hours)
+ - Phase 3: Query rewriting (48-60 hours)
+ - Phase 4: Testing and validation (16-20 hours)"
 ```
 
-**The sub-agent would then:**
+**What Makes This Powerful:**
 
-1. Use `Grep` to find all code quality markers
-2. Use `Glob` to find all source files
-3. Use `Read` to analyze file contents
-4. Use `Bash` to run complexity analysis tools
-5. Process and correlate all findings
-6. Generate a comprehensive report
+The sub-agent handled hundreds of file operations, performed complex analysis, and even spawned its own sub-tasks—all without cluttering the main conversation. The user receives a clean, actionable report.
 
 **User Control Over Agent Usage:**
 
