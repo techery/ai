@@ -14,10 +14,24 @@ Discover the elegant architecture behind every modern AI coding assistant. This 
 - **Complete Implementation**: A working TypeScript example using Anthropic's SDK showing exactly how to build your own agent
 
 **Key Takeaways:**
-
 - No magic involved—just clever engineering around giving AI the ability to use tools
 - Complete code examples demonstrating the core patterns
 - Understanding that empowers you to use existing tools more effectively and build your own
+
+### [Inside Claude Code: The Tools and Architecture That Power Your AI Coding Assistant](./articles/claude-code-tools.md)
+
+A deep dive into Claude Code's specific implementation, revealing the engineering decisions that shape its behavior:
+
+- **The Agent Loop**: How Claude Code's implementation differs from other AI assistants through explicit task planning and nested agent architecture
+- **The Toolkit**: Detailed exploration of all 15 tools, from file operations to web search
+- **Architectural Patterns**: Understanding TodoWrite/TodoRead for task planning and the Task agent system for complex operations
+- **Practical Usage**: How to work more effectively with Claude Code based on its architecture
+
+**Key Takeaways:**
+- Two key features that make Claude Code unique: mandatory task planning with TodoWrite and the nested Task agent architecture
+- Claude Code's 15 specialized tools and when to use each one
+- Why certain operations are restricted or require specific approaches
+- How to leverage Claude Code's architectural patterns for maximum productivity
 
 ## 🎯 What You'll Learn
 
