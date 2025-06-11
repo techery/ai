@@ -29,9 +29,9 @@ When you fire up Claude Code and ask it to refactor a function or debug an issue
 
 If you've ever wondered why Claude Code feels different from other AI assistants, or why it behaves in specific ways, the answer lies in its toolkit. Let's explore the 15 tools that power every interaction.
 
-## The 15 Tools That Power Claude Code
+## The Tools That Power Claude Code
 
-What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully designed set of 15 tools that map directly to what developers actually do. These tools are organized into logical groups that mirror typical development workflows:
+What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully designed set of tools that map directly to what developers actually do. These tools can be organized into logical groups that mirror typical development workflows:
 
 **File Operations** (Read, Write, Edit, MultiEdit) - The foundation of any coding task. These tools handle everything from reading existing code to making surgical edits or batch refactoring.
 
@@ -47,9 +47,164 @@ What sets Claude Code apart isn't sophisticated AI magic—it's a thoughtfully d
 
 **MCP Extensions** - The extensibility layer where any third-party tool becomes a first-class citizen, seamlessly integrated into the agent loop.
 
-Now let's dive into each tool to understand exactly what it does and how to use it effectively.
+## Architectural Patterns
 
-## The Complete Tool Reference: 15 Tools Explained
+### Task Planning with TodoWrite/TodoRead
+
+One of Claude Code's most distinctive architectural patterns is its built-in task planning system. Unlike other AI coding assistants that might lose track of complex operations, Claude Code uses TodoWrite and TodoRead to maintain systematic progress.
+
+**Important:** Claude Code is specifically instructed in its system prompt to call TodoWrite very frequently throughout conversations. This isn't optional behavior—it's a core requirement that ensures:
+
+- Every multi-step task gets planned before execution
+- Progress is tracked in real-time as work proceeds
+- Users always have visibility into what's happening
+- The assistant maintains context even in long conversations
+
+**The Planning Pattern:**
+
+```typescript
+// 1. User requests complex task
+'Refactor all API endpoints to use async/await';
+
+// 2. Claude Code immediately creates a plan
+TodoWrite([
+  { id: '1', content: 'Find all API endpoint files', status: 'pending', priority: 'high' },
+  { id: '2', content: 'Analyze current promise patterns', status: 'pending', priority: 'high' },
+  { id: '3', content: 'Convert to async/await syntax', status: 'pending', priority: 'high' },
+  { id: '4', content: 'Update error handling', status: 'pending', priority: 'medium' },
+  { id: '5', content: 'Run tests to verify', status: 'pending', priority: 'high' },
+]);
+
+// 3. Systematic execution with status updates
+TodoWrite([...todos, { id: '1', status: 'in_progress' }]);
+// Execute: Grep("(app|router)\\.(get|post|put|delete)\\(")
+TodoWrite([...todos, { id: '1', status: 'completed' }]);
+
+// 4. Claude Code regularly checks progress
+TodoRead(); // Returns current state for context awareness
+```
+
+**Why This Matters:**
+
+- **No forgotten steps**: Every part of a complex task is tracked
+- **Clear progress visibility**: Users see exactly what's being done
+- **Interruption recovery**: Can resume after errors or user intervention
+- **Systematic approach**: Forces decomposition of complex tasks
+- **Context preservation**: Maintains awareness across long operations
+
+**When Claude Code Uses TodoWrite:**
+
+- Any task with 3 or more steps
+- Before starting any complex operation
+- After completing each subtask (status updates)
+- When discovering new required steps during execution
+- After errors to track recovery steps
+
+The system prompt emphasizes that Claude Code should be "proactive" with task management, creating todos immediately upon receiving complex requests rather than waiting. This architectural decision transforms Claude Code from a reactive tool into a proactive assistant that plans and executes systematically.
+
+### The Task Agent Architecture
+
+The `Task` tool is Claude Code's solution to complex, exploratory operations that would otherwise clutter the main conversation. It spawns a complete sub-agent that operates independently with full tool access.
+
+**How Task Agents Work:**
+
+```
+Main Claude Code Session
+    │
+    ├─> Task: Complex search/analysis request
+    │     │
+    │     └─> Sub-agent (stateless, autonomous)
+    │           ├─> Has access to all 15+ tools
+    │           ├─> Executes complete task independently
+    │           ├─> No back-and-forth with main session
+    │           └─> Returns consolidated final results
+    │
+    └─> Continues with clean context
+```
+
+**Complex Example - Analyzing Technical Debt:**
+
+```typescript
+Task(
+  description: "Analyze technical debt in codebase",
+  prompt: `Analyze the entire codebase for technical debt indicators:
+
+  1. Find all TODO, FIXME, HACK, and XXX comments
+  2. Identify files with cyclomatic complexity > 10
+  3. Look for deprecated API usage patterns
+  4. Find duplicated code blocks (>20 lines similar)
+  5. Check for outdated dependencies in package files
+  6. Identify large files (>500 lines) that might need splitting
+  7. Find deeply nested code (>4 levels of indentation)
+
+  For each issue found:
+  - Note the file path and line numbers
+  - Categorize by severity (high/medium/low)
+  - Estimate effort to fix (hours)
+
+  Return a structured report with:
+  - Executive summary of technical debt level
+  - Detailed findings by category
+  - Prioritized list of refactoring recommendations
+  - Total estimated hours to address all issues`
+)
+```
+
+**The sub-agent would then:**
+
+1. Use `Grep` to find all code quality markers
+2. Use `Glob` to find all source files
+3. Use `Read` to analyze file contents
+4. Use `Bash` to run complexity analysis tools
+5. Process and correlate all findings
+6. Generate a comprehensive report
+
+**User Control Over Agent Usage:**
+
+Claude Code intelligently decides when to use sub-agents, but users can influence this behavior:
+
+```typescript
+// Force agent use with explicit language
+'Please use an agent to search for all database queries across the codebase';
+
+// Discourage agent use by being specific
+'Check the src/api/users.js file for SQL queries'; // Direct search, no agent needed
+
+// Request no agents
+'Without using agents, show me the contents of package.json';
+```
+
+**When Claude Code Uses Task Agents:**
+
+- Open-ended searches ("find all instances of X pattern")
+- Multi-faceted analysis requiring many tool calls
+- Exploratory tasks with uncertain scope
+- Operations that would generate too much output for main context
+- When the user explicitly requests it
+
+**Benefits of the Task Agent Pattern:**
+
+- **Context preservation**: Main conversation stays clean
+- **Parallel exploration**: Can spawn multiple agents for different searches
+- **Efficiency**: Reduces token usage in main context
+- **Completeness**: Agent can be thorough without overwhelming the user
+- **Specialization**: Each agent focuses on one specific task
+
+This architectural pattern is particularly powerful for large codebases where exhaustive searches might require hundreds of tool calls.
+
+## Conclusion
+
+Claude Code's architecture represents a thoughtful balance of power and safety, designed specifically for software engineering workflows. Its 15 tools aren't arbitrary—they map directly to common developer actions. The restrictions aren't limitations—they're guardrails that ensure predictable, safe operations.
+
+Understanding this architecture transforms Claude Code from a black box into a transparent system you can reason about. You know why it requires absolute paths (safety), why it batches operations (performance), why it delegates complex searches (efficiency), and why it maintains strict tool boundaries (predictability).
+
+The streaming responses, session persistence, parallel execution, and extensible tool registry all work together to create a system that feels responsive and capable while maintaining the safety necessary for production code manipulation.
+
+Whether you're using Claude Code for quick fixes or complex refactoring, understanding its architecture helps you work with the system rather than against it. The next time you see Claude Code spawn a sub-agent for a search or insist on reading before writing, you'll know these aren't quirks—they're features designed to make your coding experience both powerful and safe.
+
+---
+
+## The Complete Tool Reference
 
 Claude Code's power comes from its carefully designed toolkit. Each tool serves a specific purpose in the software development workflow.
 
@@ -323,216 +478,6 @@ Claude Code's power comes from its carefully designed toolkit. Each tool serves 
 - Preserves notebook integrity
 
 ---
-
-## 🔌 MCP Integration: The Extensibility Layer
-
-### Understanding Model Context Protocol (MCP)
-
-The Model Context Protocol (MCP) is Claude Code's extensibility framework that allows third-party tools to integrate seamlessly into agent's workflow.
-
-### Architectural Design: First-Class Tool Citizens
-
-**The Key Differentiator:** While many AI coding assistants treat MCP as an add-on layer requiring special handling (like `mcp_invoke("tool_name", params)`), Claude Code's architecture treats every MCP tool as a native tool. This means:
-
-```typescript
-// Other assistants might require:
-mcp_invoke('github', 'createPR', { title: 'Fix bug', body: '...' });
-
-// In Claude Code, it's just:
-mcp__github__createPR({ title: 'Fix bug', body: '...' });
-```
-
-This architectural decision has profound implications:
-
-1. **Unified Tool Discovery**: It sees all tools—built-in and MCP—in a single registry
-2. **Consistent Error Handling**: MCP tool failures are handled identically to built-in tool failures
-3. **Natural Integration**: It can use MCP tools in the same agent loops and patterns as native tools
-
-### Common MCP Integrations
-
-#### GitHub Integration
-
-```typescript
-// These tools appear when GitHub MCP server is connected:
-mcp__github__createPR({
-  title: string,
-  body: string,
-  base?: string,
-  head?: string
-})
-mcp__github__listIssues({
-  state?: 'open' | 'closed' | 'all',
-  labels?: string[]
-})
-mcp__github__mergePR({
-  number: number,
-  merge_method?: 'merge' | 'squash' | 'rebase'
-})
-```
-
-#### Database Integration
-
-```typescript
-// Example database MCP tools:
-mcp__postgres__query({ sql: string, params?: any[] })
-mcp__postgres__listTables({ schema?: string })
-mcp__postgres__describeTable({ table: string })
-```
-
-## Architectural Patterns
-
-### Task Planning with TodoWrite/TodoRead
-
-One of Claude Code's most distinctive architectural patterns is its built-in task planning system. Unlike other AI coding assistants that might lose track of complex operations, Claude Code uses TodoWrite and TodoRead to maintain systematic progress.
-
-**Important:** Claude Code is specifically instructed in its system prompt to call TodoWrite very frequently throughout conversations. This isn't optional behavior—it's a core requirement that ensures:
-
-- Every multi-step task gets planned before execution
-- Progress is tracked in real-time as work proceeds
-- Users always have visibility into what's happening
-- The assistant maintains context even in long conversations
-
-**The Planning Pattern:**
-
-```typescript
-// 1. User requests complex task
-'Refactor all API endpoints to use async/await';
-
-// 2. Claude Code immediately creates a plan
-TodoWrite([
-  { id: '1', content: 'Find all API endpoint files', status: 'pending', priority: 'high' },
-  { id: '2', content: 'Analyze current promise patterns', status: 'pending', priority: 'high' },
-  { id: '3', content: 'Convert to async/await syntax', status: 'pending', priority: 'high' },
-  { id: '4', content: 'Update error handling', status: 'pending', priority: 'medium' },
-  { id: '5', content: 'Run tests to verify', status: 'pending', priority: 'high' },
-]);
-
-// 3. Systematic execution with status updates
-TodoWrite([...todos, { id: '1', status: 'in_progress' }]);
-// Execute: Grep("(app|router)\\.(get|post|put|delete)\\(")
-TodoWrite([...todos, { id: '1', status: 'completed' }]);
-
-// 4. Claude Code regularly checks progress
-TodoRead(); // Returns current state for context awareness
-```
-
-**Why This Matters:**
-
-- **No forgotten steps**: Every part of a complex task is tracked
-- **Clear progress visibility**: Users see exactly what's being done
-- **Interruption recovery**: Can resume after errors or user intervention
-- **Systematic approach**: Forces decomposition of complex tasks
-- **Context preservation**: Maintains awareness across long operations
-
-**When Claude Code Uses TodoWrite:**
-
-- Any task with 3 or more steps
-- Before starting any complex operation
-- After completing each subtask (status updates)
-- When discovering new required steps during execution
-- After errors to track recovery steps
-
-The system prompt emphasizes that Claude Code should be "proactive" with task management, creating todos immediately upon receiving complex requests rather than waiting. This architectural decision transforms Claude Code from a reactive tool into a proactive assistant that plans and executes systematically.
-
-### The Task Agent Architecture
-
-The `Task` tool is Claude Code's solution to complex, exploratory operations that would otherwise clutter the main conversation. It spawns a complete sub-agent that operates independently with full tool access.
-
-**How Task Agents Work:**
-
-```
-Main Claude Code Session
-    │
-    ├─> Task: Complex search/analysis request
-    │     │
-    │     └─> Sub-agent (stateless, autonomous)
-    │           ├─> Has access to all 15+ tools
-    │           ├─> Executes complete task independently
-    │           ├─> No back-and-forth with main session
-    │           └─> Returns consolidated final results
-    │
-    └─> Continues with clean context
-```
-
-**Complex Example - Analyzing Technical Debt:**
-
-```typescript
-Task(
-  description: "Analyze technical debt in codebase",
-  prompt: `Analyze the entire codebase for technical debt indicators:
-
-  1. Find all TODO, FIXME, HACK, and XXX comments
-  2. Identify files with cyclomatic complexity > 10
-  3. Look for deprecated API usage patterns
-  4. Find duplicated code blocks (>20 lines similar)
-  5. Check for outdated dependencies in package files
-  6. Identify large files (>500 lines) that might need splitting
-  7. Find deeply nested code (>4 levels of indentation)
-
-  For each issue found:
-  - Note the file path and line numbers
-  - Categorize by severity (high/medium/low)
-  - Estimate effort to fix (hours)
-
-  Return a structured report with:
-  - Executive summary of technical debt level
-  - Detailed findings by category
-  - Prioritized list of refactoring recommendations
-  - Total estimated hours to address all issues`
-)
-```
-
-**The sub-agent would then:**
-
-1. Use `Grep` to find all code quality markers
-2. Use `Glob` to find all source files
-3. Use `Read` to analyze file contents
-4. Use `Bash` to run complexity analysis tools
-5. Process and correlate all findings
-6. Generate a comprehensive report
-
-**User Control Over Agent Usage:**
-
-Claude Code intelligently decides when to use sub-agents, but users can influence this behavior:
-
-```typescript
-// Force agent use with explicit language
-'Please use an agent to search for all database queries across the codebase';
-
-// Discourage agent use by being specific
-'Check the src/api/users.js file for SQL queries'; // Direct search, no agent needed
-
-// Request no agents
-'Without using agents, show me the contents of package.json';
-```
-
-**When Claude Code Uses Task Agents:**
-
-- Open-ended searches ("find all instances of X pattern")
-- Multi-faceted analysis requiring many tool calls
-- Exploratory tasks with uncertain scope
-- Operations that would generate too much output for main context
-- When the user explicitly requests it
-
-**Benefits of the Task Agent Pattern:**
-
-- **Context preservation**: Main conversation stays clean
-- **Parallel exploration**: Can spawn multiple agents for different searches
-- **Efficiency**: Reduces token usage in main context
-- **Completeness**: Agent can be thorough without overwhelming the user
-- **Specialization**: Each agent focuses on one specific task
-
-This architectural pattern is particularly powerful for large codebases where exhaustive searches might require hundreds of tool calls.
-
-## Conclusion
-
-Claude Code's architecture represents a thoughtful balance of power and safety, designed specifically for software engineering workflows. Its 15 tools aren't arbitrary—they map directly to common developer actions. The restrictions aren't limitations—they're guardrails that ensure predictable, safe operations.
-
-Understanding this architecture transforms Claude Code from a black box into a transparent system you can reason about. You know why it requires absolute paths (safety), why it batches operations (performance), why it delegates complex searches (efficiency), and why it maintains strict tool boundaries (predictability).
-
-The streaming responses, session persistence, parallel execution, and extensible tool registry all work together to create a system that feels responsive and capable while maintaining the safety necessary for production code manipulation.
-
-Whether you're using Claude Code for quick fixes or complex refactoring, understanding its architecture helps you work with the system rather than against it. The next time you see Claude Code spawn a sub-agent for a search or insist on reading before writing, you'll know these aren't quirks—they're features designed to make your coding experience both powerful and safe.
 
 ## Official Resources
 
