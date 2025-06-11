@@ -8,7 +8,7 @@ Many software engineers think there's some incredibly complex magic happening in
 
 ## About This Series
 
-In this series, we'll dissect how coding agents actually work. Throughout this series, we'll examine various implementations including **Claude Code**, RooCode, Aider, and other coding assistants. We'll focus on understanding the patterns and concepts that make these tools work, using real examples and, where possible, open-source implementations to look under the hood. The beauty is that whether you're using Claude Code, RooCode, Aider, Cursor, Windsurf, or any other coding assistant, **they all follow the same fundamental patterns**.
+In this series, we'll dissect how coding agents actually work. We'll examine various implementations including **Claude Code**, RooCode, Aider, and other coding assistants, using real examples and open-source implementations where possible.
 
 By understanding these patterns, we can:
 
@@ -17,28 +17,19 @@ By understanding these patterns, we can:
 - Learn how to build our own agents
 - Use these tools more effectively in our daily work
 
-In this post, I'm going to pull back the curtain and show you exactly how these coding assistants work. No marketing fluff, no hand-waving about "advanced AI"—just the core patterns that power every major AI coding tool today. By the end, you'll understand:
-
-- Why Cursor can refactor your entire codebase without breaking tests
-- How Windsurf knows which files to modify for a feature request
-- What happens when Claude Code "thinks" before suggesting code
-- Why some AI assistants feel smarter than others (hint: it's not just the model)
-
-Most importantly, you'll see that there's no magic—just clever engineering around a simple idea: **giving AI the ability to use tools and learn from results**.
+In this post, I'm going to give you a quick intro to how modern coding assistants work. No marketing fluff, no hand-waving about "advanced AI"—just the core patterns that power every major AI coding tool today.
 
 ## The Simple Idea That Powers Everything
 
 Picture this: You ask an AI assistant to "add error handling to all API endpoints." A simple chatbot would give you generic advice about try-catch blocks. But a modern AI agent? It actually reads your files, understands your code structure, modifies each endpoint, and verifies the changes make sense.
 
-This is the power of **agent loops**—and it's transforming how AI assistants work. Let's explore what makes them so powerful by building a simple example.
+This is the power of **agent loops**—and it's transforming how AI assistants work.
 
 ## The Problem with One-Shot AI Responses
 
 Traditional AI assistants work in a simple request-response pattern:
 
 ```
-
-The magic happens when these three components work together: the LLM provides intelligence and decision-making, tools provide capabilities to interact with the world, and the loop provides the persistence to work through complex, multi-step problems.
 You: "Add error handling to my function"
 AI: "Here's how to wrap code in try-catch blocks: [generic example]"
 ```
@@ -63,22 +54,54 @@ An agent loop is an AI system that:
 
 Instead of giving you a one-time response, it actually works through the problem step by step, using tools to interact with your code.
 
-Here's the basic pattern that powers every modern coding assistant:
+### The Loop - The Orchestrator
+
+The loop ties everything together. You can think about it as a simple while loop that continues until the task is complete, managing the flow between thinking (LLM) and doing (Tools).
+
+Here's a visual representation of how the agent loop works:
+
+```mermaid
+graph TD
+    Start([User Request]) --> Think[LLM Thinks:<br/>What to do next?]
+    Think --> Decide{Need to<br/>use tool?}
+    Decide -->|Yes| Act[Execute Tool]
+    Act --> Observe[Get Result]
+    Observe --> Update[Update Context]
+    Update --> Check{Task<br/>Complete?}
+    Check -->|No| Think
+    Check -->|Yes| End([Final Response])
+    Decide -->|No| End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style Think fill:#e3f2fd
+    style Act fill:#fff3e0
+    style Observe fill:#f3e5f5
+```
+
+And here's the same flow in code:
 
 ```typescript
 while (!taskComplete) {
+  // 1. Ask LLM what to do next
   const action = await llm.decideNextAction(context);
-  const result = await executeTool(action);
-  context = updateContext(context, result);
-  taskComplete = await llm.isTaskComplete(context);
+  
+  // 2. Execute the tool if needed
+  if (action.requiresTool) {
+    const result = await executeTool(action);
+    context = updateContext(context, result);
+  }
+  
+  // 3. Check if task is complete
+  taskComplete = action.isComplete;
 }
 ```
 
-That's it. That's the "magic" behind Claude Code, Cursor, and Windsurf.
+That's it. The LLM decides, tools execute, the loop continues. This simple pattern creates systems that can solve complex, multi-step problems.
 
-## How Agent Loops Work
+## Agent Loop Components
 
-Let's break down the three key components that make agent loops possible. Understanding these components reveals why modern coding assistants are so powerful.
+Let's break down the key components that make agent loops possible. Understanding these components reveals why modern coding assistants are so powerful.
 
 ### 1. The LLM (Large Language Model)
 
@@ -172,29 +195,51 @@ There are multiple ways to make LLMs use tools, each with different trade-offs a
 
 Each coding agent has evolved its own set of tools and execution methods, but they all follow the same fundamental agent loop pattern. The key is understanding that the loop itself is universal—it's the tool implementations and invocation methods that differ.
 
-### 3. The Loop - The Orchestrator
+## The Real Source of Power
 
-The loop ties everything together. It's a simple while loop that continues until the task is complete, managing the flow between thinking (LLM) and doing (Tools).
+Understanding where the power in agent systems comes from requires a balanced perspective:
 
-```typescript
-while (!taskComplete) {
-  // 1. Ask LLM what to do next
-  const toolCall = await llm.invoke(context);
+### The Model Provides the Intelligence
 
-  // 2. Execute the tool
-  const result = await executeTool(toolCall);
+- **The Model Does the Heavy Lifting**: Modern LLMs like GPT-4, Claude, or Gemini already understand code, can reason about problems, and know how to decompose complex tasks
+- **The Agent Loop is Surprisingly Simple**: At its core, it's just a while loop that lets the model use tools—the basic implementation can be done in a few hundred lines of code
 
-  // 3. Update context with results
-  context = updateContext(context, result);
+### But Architecture Makes the Difference
 
-  // 4. Check if we're done
-  taskComplete = await llm.isTaskComplete(context);
-}
-```
+While the model provides raw intelligence, **the agent architecture and implementation choices significantly impact real-world effectiveness**:
 
-That's it. The LLM decides, tools execute, the loop continues. This simple pattern creates systems that can solve complex, multi-step problems.
+- **Tool Design Matters**: Well-designed tools with proper error handling, retry logic, and intelligent defaults make agents far more reliable
+- **Context Management is Critical**: Smart context windowing, memory systems, and state management determine whether an agent can handle long, complex tasks
+- **Execution Strategy**: Parallel tool execution, intelligent batching, and efficient planning can make agents 10x faster
+- **Error Recovery**: Robust agents gracefully handle failures, retry intelligently, and know when to ask for help
 
-### A Complete Example: Building an Agent Loop
+This is why Claude Code, Cursor, and Windsurf can feel very different despite using similar models. The combination of a powerful model with thoughtful architecture creates the best experience.
+
+In future articles in this series, we'll dive deeper into these architectural differences—exploring how different coding assistants implement context management, tool design, and execution strategies to create their unique experiences.
+
+## Why Agent Loops Matter for Software Engineers
+
+### 1. **Handling Complex, Multi-Step Problems**
+
+Real development tasks rarely have simple solutions. Agent loops can tackle problems that require investigation, experimentation, and iteration.
+
+### 2. **Contextual Understanding**
+
+By using tools to explore the actual codebase, agents build deep contextual understanding rather than relying on generic knowledge.
+
+### 3. **Verification and Validation**
+
+Agents can verify their solutions actually work by running tests, checking types, and validating outputs.
+
+### 4. **Adaptive Problem Solving**
+
+When initial approaches fail, agents learn from the results and try different strategies.
+
+### 5. **Automation of Tedious Tasks**
+
+Tasks like large-scale refactoring, dependency updates, or documentation generation become manageable.
+
+## Complete Example: Building an Agent Loop
 
 Let's build a simple agent using Anthropic's SDK with proper tool use. This example shows exactly how agent loops work:
 
@@ -389,33 +434,9 @@ await runAgent("Find all .js files in the src directory and add 'use strict' to 
 
 That's it. This is the pattern behind every AI coding assistant. Claude decides what tool to use, executes it, sees the result, and continues until the task is done.
 
-## Why Agent Loops Matter for Software Engineers
-
-### 1. **Handling Complex, Multi-Step Problems**
-
-Real development tasks rarely have simple solutions. Agent loops can tackle problems that require investigation, experimentation, and iteration.
-
-### 2. **Contextual Understanding**
-
-By using tools to explore the actual codebase, agents build deep contextual understanding rather than relying on generic knowledge.
-
-### 3. **Verification and Validation**
-
-Agents can verify their solutions actually work by running tests, checking types, and validating outputs.
-
-### 4. **Adaptive Problem Solving**
-
-When initial approaches fail, agents learn from the results and try different strategies.
-
-### 5. **Automation of Tedious Tasks**
-
-Tasks like large-scale refactoring, dependency updates, or documentation generation become manageable.
-
 ## Conclusion
 
-Agent loops are the simple yet powerful pattern behind every modern AI coding assistant. By combining LLM intelligence with basic tools like file reading and writing, then wrapping it in an iterative loop, you get systems that can solve complex programming tasks.
-
-There's no magic—just a loop that thinks, acts, observes, and repeats.
+Agent loops are the foundational pattern behind every modern AI coding assistant. By combining LLM intelligence with basic tools and an iterative loop, you get systems that can solve complex programming tasks.
 
 Understanding this pattern helps you:
 
@@ -423,5 +444,3 @@ Understanding this pattern helps you:
 - Debug when things go wrong
 - Build your own specialized agents
 - See through the marketing hype to understand real capabilities
-
-The next time you watch Claude Code or Cursor work through your codebase, you'll know exactly what's happening: an agent loop in action, iterating its way to a solution.
