@@ -13,7 +13,7 @@
 - [The Power of Standardization](#the-power-of-standardization)
 - [Can This USB-C Cable Charge My Phone?](#can-this-usb-c-cable-charge-my-phone)
 - [Practical Insights from the Trenches](#practical-insights-from-the-trenches)
-- [The Future: Remote MCP and Beyond](#the-future-remote-mcp-and-beyond)
+- [Where This Is All Going](#where-this-is-all-going)
 - [Conclusion](#conclusion)
 
 ## The Hype vs Reality
@@ -34,21 +34,15 @@ But here's the thing—sometimes boring solutions to real problems are exactly w
 
 Picture this scenario from just a year ago: I wanted my AI assistant to pull context from our Sentry crash reports while fixing bugs. Every tool needed its own custom integration. Different formats, different APIs, different authentication methods.
 
-Today, in June 2025? **Most major AI coding assistants have converged on MCP.**
+Today, in June 2025? **Most major AI coding assistants have converged on MCP. (Almost)**
 
-**The MCP Winners Circle:**
+**Examples:**
 
 - **Claude Desktop & Claude Code**: First-class MCP support
 - **Windsurf**: Simple MCP setup (takes minutes)
 - **Cursor**: Full MCP support (though setup can be finicky)
-- **Continue**: Open-source champion with MCP built-in
-- **VS Code**: Agent mode with MCP for all users
-
-**Still Holding Out:**
-
-- **Aider**: Still using its own plugin system
-- **Legacy enterprise tools**: Many internal tools haven't caught up
-- **Some open-source projects**: Smaller projects still rolling their own
+- **Continue**: has MCP built-in
+- **VS Code with Copilot**: Agent mode with MCP for all users
 
 The transformation is remarkable. What used to be M×N integrations (M assistants × N tools) is rapidly becoming M+N. Build one MCP server for Sentry, and it works with Claude, Cursor, Windsurf, Continue—everywhere except the holdouts.
 
@@ -488,9 +482,11 @@ server.tool(
 
 The AI can only use tools it understands. Since different models interpret descriptions differently, be explicit. What works as a terse description for Claude might confuse GPT-4.
 
-## The Future: Remote MCP and Beyond
+## Where This Is All Going
 
-Right now, MCP servers run locally. The future? Remote servers:
+Right now, MCP servers run locally. But here's the thing—remote servers aren't just "the future" anymore. The work is almost done. Authentication is being finalized. We're talking weeks, not months.
+
+Here's what's coming:
 
 ```typescript
 // Coming soon
