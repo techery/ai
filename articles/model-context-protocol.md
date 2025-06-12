@@ -484,28 +484,23 @@ The AI can only use tools it understands. Since different models interpret descr
 
 ## Where This Is All Going
 
-Right now, MCP servers run locally. But here's the thing—remote servers aren't just "the future" anymore. The work is almost done. Authentication is being finalized. We're talking weeks, not months.
+Let's be honest—MCP is far from finished. It's more like a construction site with lots of activity than a polished product.
 
-Here's what's coming:
+**What's happening right now:**
 
-```typescript
-// Coming soon
-{
-  "mcpServers": {
-    "company-api": {
-      "url": "https://mcp.company.com/api",
-      "auth": { "type": "oauth2" }
-    }
-  }
-}
-```
+Remote servers shipped with OAuth support in March 2025. Atlassian's using them. Cloudflare built support into Workers. But OAuth implementation is a mess—everyone's arguing about whether MCP servers should handle auth themselves or delegate to existing providers.
 
-This enables:
+The official registry is coming to solve the "finding servers" problem. But the community already built four different registries (mcp.so, MCPHub, OneMCP, mcp-get.com). Now we have a new problem: which registry to use?
 
-- Shared team resources
-- Secure production access
-- Centralized management
-- Cloud-based agents
+**Who's using it:**
+
+Everyone jumped in—Google, OpenAI, Microsoft, Atlassian, JetBrains. Tens of thousands of server implementations in under a year. But compatibility is all over the place. What works in Claude might break in ChatGPT.
+
+**The reality:**
+
+MCP is becoming the standard because it solves a real problem. But it's going through all the growing pains you'd expect—fragmentation, compatibility issues, debates about basic architecture. 
+
+Think of it like the early days of USB—everyone agrees it's the future, but your cable might not work with that device, and nobody can agree on the exact specs. Give it another year or two.
 
 ## Conclusion
 
